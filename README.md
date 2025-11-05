@@ -66,25 +66,25 @@ from GEK import GEKRunner
 
 # Minimal signature: return energy, grad
 def my_objective(x):
-    e = float(x @ x)
+    e = float(x @ x) + np.random.normal(0, 0.1)
     g = 2.0*x + np.random.normal(0, 0.01, size=x.shape)
     return e, g
-    # Optional (recommended if available):
-    # e_var = 1e-3
+    # Then, try:
+    # e_var = 0.1
     # g_var = np.full_like(x, 1e-2)
-    # return e, g, e_var, g_var
+    # return np.array(e), g, e_var, g_var
 
 d  = 5
 x0 = np.zeros(d)
 
-runner = GEKRunner(length_scale=1.2, sigma=1.0, sigma_f=0.0, sigma_g=0.01)
+runner = GEKRunner(length_scale=1.2, sigma=1.0)
 x_opt, path, surrogate, E_path, V_path = runner.GEK_optimize(
     my_objective, x0,
     var_threshold=1.0,      # keep inner steps where GP Var(x) ≤ threshold
     method='NLC',           # 'GD' | 'BFGS' | 'NLC' (trust-constr with Var constraint)
     outer_tol=1e-7,         # stop outer loop when ||∇f|| small
     inner_tol=1e-2,         # tol for inner GD if method='GD'
-    alpha=0.1,              # step size for inner GD
+    alpha=0.1,              # step size for inner GD if method='GD'
     max_iter=50,
     internal_max_iter=100,
     return_path=True,
