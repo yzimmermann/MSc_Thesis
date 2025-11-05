@@ -9,7 +9,7 @@
 source ~/.bashrc
 conda activate GEK
 
-python main.py \
+python main_MC.py \
     --d $1 \
     --h $2 \
     --alpha $3 \
