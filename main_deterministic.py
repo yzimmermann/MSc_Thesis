@@ -50,11 +50,14 @@ configs = configs.astype(jnp.bool_)
 diffs = configs ^ configs[:, (jnp.arange(d) + 1) % d]
 spin_z = 2 * jnp.sum(diffs, axis=1) - d
 
-spin_x = jnp.zeros(configs.shape, dtype=jnp.int_)
-for i in range(d):
-    new = configs.at[:, i].set(~configs[:, i])
-    new = jnp.dot(new, 2 ** jnp.arange(d)[::-1])
-    spin_x = spin_x.at[:, i].set(new)
+# Vectorized computation of spin_x (flipping each bit position)
+# Create flipped configs for all positions at once
+configs_expanded = jnp.tile(configs[:, None, :], (1, d, 1))  # shape (2^d, d, d)
+flip_mask = jnp.eye(d, dtype=jnp.bool_)  # identity matrix for flipping
+configs_flipped = configs_expanded ^ flip_mask[None, :, :]  # flip each position
+# Convert to indices
+powers = 2 ** jnp.arange(d)[::-1]
+spin_x = jnp.dot(configs_flipped, powers).astype(jnp.int_)  # shape (2^d, d)
 i_vals = jnp.repeat(jnp.arange(2 ** d), d)
 j_vals = jnp.ravel(spin_x)
 data = jnp.append(spin_z, jnp.repeat(-h, i_vals.size))

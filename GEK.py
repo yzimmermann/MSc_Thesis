@@ -323,20 +323,25 @@ class GEKRunner:
         x_current = x0.copy()
         steps = [x_current.copy()]
         for _ in range(max_iter):
-            mean, sigma, grad, trash = self.surrogate.predict_with_grad(x_current.reshape(1, -1))
+            # Get gradient at current point
+            mean, var_current, grad, _ = self.surrogate.predict_with_grad(x_current.reshape(1, -1))
             grad = grad.flatten()
+            grad_norm = np.linalg.norm(grad)
+            
+            # Take GD step
             x_new = x_current - alpha * grad
-            mean, var = self.surrogate.predict(x_new.reshape(1, -1))
-            #if _ % 1 == 0:
-            #    print(_, np.linalg.norm(grad), mean, var)
+            
+            # Get variance at new point (only if needed for check)
             if len(steps) > 1:
-                if var[0] > var_threshold:
+                _, var_new = self.surrogate.predict(x_new.reshape(1, -1))
+                if var_new[0] > var_threshold:
                     x_current = steps[-1].copy()
-                    print(f"Converged at internal step {_} because of variance: {var[0]}")
+                    print(f"Converged at internal step {_} because of variance: {var_new[0]}")
                     break
-                if np.linalg.norm(grad) < tol:
-                    print(f"Converged at internal step {_} because of gradient norm: {np.linalg.norm(grad)}")
+                if grad_norm < tol:
+                    print(f"Converged at internal step {_} because of gradient norm: {grad_norm}")
                     break
+            
             x_current = x_new
             steps.append(x_current.copy())
         return x_current
