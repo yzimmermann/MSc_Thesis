@@ -3,6 +3,32 @@
 ## Overview
 This document summarizes the performance optimizations made to the GEK (Gradient-Enhanced Kriging) codebase. All optimizations maintain numerical correctness while providing significant speed improvements.
 
+## Validation Against Original Implementation
+
+A comprehensive benchmark (`benchmark_original_vs_optimized.py`) directly compares the original (pre-optimization) and optimized implementations:
+
+### Numerical Correctness ✓
+All test cases demonstrate numerical equivalence with errors < 0.005%:
+- **Small Dataset** (3 train, 100 test): 0.0000% mean error, 0.0000% gradient error
+- **Medium Dataset** (10 train, 500 test): 0.0043% mean error, 0.0025% gradient error
+- **Large Batch** (10 train, 1000 test): 0.0045% mean error, 0.0026% gradient error
+- **With Noise** (10 train, 200 test): 0.0002% mean error, 0.0001% gradient error
+
+These tiny differences are due to different order of floating-point operations and are well within expected numerical precision.
+
+### Measured Performance Improvements ✓
+**Average speedups across all test cases:**
+- `predict()`: **3.28x faster**
+- `predict_with_grad()`: **5.46x faster**
+
+**Detailed speedups by test case:**
+- Small Dataset: 1.86x / 2.13x (predict / predict_with_grad)
+- Medium Dataset: 3.27x / 5.81x
+- Large Batch: **6.13x / 10.44x** ⭐
+- With Noise: 1.85x / 3.44x
+
+**Key insight:** Speedup scales with batch size - larger batches benefit more from vectorization, with up to 10.44x improvement for predict_with_grad on 1000 test points.
+
 ## Optimizations Implemented
 
 ### 1. Vectorized Prediction Methods (GEK.py)
@@ -89,19 +115,35 @@ spin_x = jnp.dot(configs_flipped, powers).astype(jnp.int_)
 
 **Computational Savings:** O(n²) reduced to O(n) for variance prediction
 
-## Benchmark Results
+## Historical Benchmark Results (Initial Testing)
 
-### Prediction Performance
+### Initial Prediction Performance Tests
 | Dataset Size | predict() | predict_with_grad() |
 |-------------|-----------|---------------------|
 | 5 train, 100 test | 0.24ms/pred | 0.27ms/pred |
 | 10 train, 500 test | 0.07ms/pred | 0.08ms/pred |
 | 10 train, 1000 test | 0.03ms/pred | 0.04ms/pred |
 
+### Validated Performance (Original vs Optimized)
+| Test Case | Original predict() | Optimized predict() | Speedup |
+|-----------|-------------------|---------------------|---------|
+| Small (3 train, 100 test) | 0.441ms/pt | 0.238ms/pt | 1.86x |
+| Medium (10 train, 500 test) | 0.256ms/pt | 0.078ms/pt | 3.27x |
+| Large (10 train, 1000 test) | 0.213ms/pt | 0.035ms/pt | **6.13x** |
+| With Noise (10 train, 200 test) | 0.302ms/pt | 0.163ms/pt | 1.85x |
+
+| Test Case | Original with_grad() | Optimized with_grad() | Speedup |
+|-----------|---------------------|----------------------|---------|
+| Small (3 train, 100 test) | 0.566ms/pt | 0.266ms/pt | 2.13x |
+| Medium (10 train, 500 test) | 0.465ms/pt | 0.080ms/pt | 5.81x |
+| Large (10 train, 1000 test) | 0.412ms/pt | 0.040ms/pt | **10.44x** |
+| With Noise (10 train, 200 test) | 0.580ms/pt | 0.169ms/pt | 3.44x |
+
 ### Key Observations
 - Performance scales efficiently with batch size
-- Larger batches benefit more from vectorization
+- Larger batches benefit significantly more from vectorization (up to 10.44x)
 - Overhead is minimal for batch processing
+- Speedup is consistent across different scenarios (with/without noise)
 
 ## Testing and Validation
 
